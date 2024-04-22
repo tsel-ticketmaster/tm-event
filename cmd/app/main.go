@@ -11,8 +11,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"github.com/tsel-ticketmaster/tm-event/config"
-	"github.com/tsel-ticketmaster/tm-event/internal/module/adminapp/admin"
-	"github.com/tsel-ticketmaster/tm-event/internal/module/customerapp/customer"
+	adminapp_event "github.com/tsel-ticketmaster/tm-event/internal/module/adminapp/event"
+	adminapp_order "github.com/tsel-ticketmaster/tm-event/internal/module/adminapp/order"
+	adminapp_ticket "github.com/tsel-ticketmaster/tm-event/internal/module/adminapp/ticket"
 	"github.com/tsel-ticketmaster/tm-event/internal/pkg/jwt"
 	internalMiddleare "github.com/tsel-ticketmaster/tm-event/internal/pkg/middleware"
 	"github.com/tsel-ticketmaster/tm-event/internal/pkg/session"
@@ -73,7 +74,6 @@ func main() {
 	session := session.NewRedisSessionStore(logger, rc)
 
 	adminSessionMiddleware := internalMiddleare.NewAdminSessionMiddleware(jsonWebToken, session)
-	customerSessionMiddleware := internalMiddleare.NewCustomerSessionMiddleware(jsonWebToken, session)
 
 	router := mux.NewRouter()
 	router.Use(
@@ -83,31 +83,30 @@ func main() {
 	)
 
 	// admin's app
-	adminappAdminRepository := admin.NewAdminRepository(logger, psqldb)
-	adminappAdminUseCase := admin.NewAdminUseCase(admin.AdminUseCaseProperty{
-		Logger:          logger,
-		Timeout:         c.Application.Timeout,
-		JSONWebToken:    jsonWebToken,
-		Session:         session,
-		AdminRepository: adminappAdminRepository,
+	adminappEventRepository := adminapp_event.NewEventRepository(logger, psqldb)
+	adminappArtistRepository := adminapp_event.NewArtistRepository(logger, psqldb)
+	adminappPromotorRepository := adminapp_event.NewPromotorRepository(logger, psqldb)
+	adminappShowRepository := adminapp_event.NewShowRepository(logger, psqldb)
+	adminappLocationRepository := adminapp_event.NewLocationRepository(logger, psqldb)
+	adminappOrderRuleRangeDateRepository := adminapp_order.NewOrderRuleRangeDateRepository(logger, psqldb)
+	adminappOrderRuleDayRepository := adminapp_order.NewOrderRuleDayRepository(logger, psqldb)
+	adminappTicketStockRepository := adminapp_ticket.NewTicketStockRepository(logger, psqldb)
+	adminappEventUseCase := adminapp_event.NewEventUseCase(adminapp_event.EventUseCaseProperty{
+		Logger:                       logger,
+		Location:                     c.Application.Timezone,
+		Timeout:                      c.Application.Timeout,
+		EventRepository:              adminappEventRepository,
+		ArtistRepository:             adminappArtistRepository,
+		PromotorRepository:           adminappPromotorRepository,
+		ShowRepository:               adminappShowRepository,
+		LocationRepository:           adminappLocationRepository,
+		OrderRuleDayRepository:       adminappOrderRuleDayRepository,
+		OrderRuleRangeDateRepository: adminappOrderRuleRangeDateRepository,
+		TicketStockRepository:        adminappTicketStockRepository,
 	})
-	admin.InitHTTPHandler(router, adminSessionMiddleware, validate, adminappAdminUseCase)
+	adminapp_event.InitHTTPHandler(router, adminSessionMiddleware, validate, adminappEventUseCase)
 
 	// customer's app
-	customerappCustomerRepository := customer.NewCustomerRepository(logger, psqldb)
-	customerappCustomerUseCase := customer.NewCustomerUseCase(customer.CustomerUseCaseProperty{
-		AppName:            CustomerApp,
-		Logger:             logger,
-		Timeout:            c.Application.Timeout,
-		TMUserBaseURL:      c.Application.TMUser.BaseURL,
-		CryptoSecret:       c.Crypto.Secret,
-		JSONWebToken:       jsonWebToken,
-		Session:            session,
-		Cache:              rc,
-		Publisher:          publisher,
-		CustomerRepository: customerappCustomerRepository,
-	})
-	customer.InitHTTPHandler(router, customerSessionMiddleware, validate, customerappCustomerUseCase)
 
 	handler := middleware.SetChain(
 		router,

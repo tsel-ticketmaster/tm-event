@@ -1,15 +1,28 @@
 package event
 
-import "time"
+import (
+	"time"
 
-const (
-	TypeConcert          string = "CONCERT"
-	ShowTypeLive         string = "LIVE"
-	ShowTypeHologramLive string = "HOLOGRAM_LIVE"
-	ShowTypeOnline       string = "ONLINE"
+	"github.com/tsel-ticketmaster/tm-event/internal/module/adminapp/order"
+	"github.com/tsel-ticketmaster/tm-event/internal/module/adminapp/ticket"
 )
 
-type ShowLocation struct {
+const (
+	VenueOnline            string = "ONLINE"
+	ShowTypeLive           string = "LIVE"
+	ShowTypeHologramLive   string = "HOLOGRAM_LIVE"
+	ShowTypeOnline         string = "ONLINE"
+	TicketTierOnline       string = "ONLINE"
+	TicketTierWood         string = "WOOD"
+	TicketTierBronze       string = "BRONZE"
+	TicketTierSilver       string = "SILVER"
+	TicketTierGold         string = "GOLD"
+	TypeOrderRuleRangeDate string = "ORDER_RULE_RANGE_DATE"
+)
+
+type Location struct {
+	EventID          string
+	ShowID           string
 	Country          string
 	City             string
 	FormattedAddress string
@@ -18,29 +31,58 @@ type ShowLocation struct {
 }
 
 type Show struct {
-	ID               int64
-	Venue            string
-	Type             string
-	TicketAllocation int64
-	Location         *ShowLocation
-	Time             time.Time
+	EventID     string
+	ID          string
+	Venue       string
+	Type        string
+	TicketStock []ticket.TicketStock
+	Location    *Location
+	Time        time.Time
+	Status      string
 }
 
 type Promotor struct {
-	Name  string
-	Email string
-	Phone string
+	EventID string
+	Name    string
+	Email   string
+	Phone   string
+}
+
+type Artist struct {
+	EventID string
+	Name    string
 }
 
 type Event struct {
-	ID                    int64
-	Name                  string
-	Type                  string
-	Promotors             []Promotor
-	Artists               []string
-	TotalTicketAllocation int64
-	Shows                 []Show
-	Description           string
-	CreatedAt             time.Time
-	UpdatedAt             time.Time
+	ID          string
+	Name        string
+	Promotors   []Promotor
+	Artists     []Artist
+	Shows       []Show
+	Description string
+	Status      string
+	OrderRules  OrderRuleAggregation
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type OrderRuleAggregation struct {
+	OrderRuleRangeDate order.OrderRuleRangeDate
+	OrderRuleDay       []order.OrderRuleDay
+}
+
+type OrderRuleRangeDate struct {
+	EventID   string
+	StartDate time.Time
+	EndDate   time.Time
+}
+
+type OrderRuleDay struct {
+	EventID string
+	Day     int64
+}
+
+type OrderRuleMaximumTicket struct {
+	EventID string
+	Maximum int64
 }

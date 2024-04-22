@@ -30,7 +30,7 @@ func GenerateSecret(plain, salt string, len int) string {
 
 func GenerateTimestampWithPrefix(prefix string) string {
 	now := time.Now()
-	micro := now.UnixMicro()
+	micro := now.UnixNano()
 
 	return fmt.Sprintf("%s%d", prefix, micro)
 }

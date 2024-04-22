@@ -23,6 +23,7 @@ type Config struct {
 		Environment string
 		Debug       bool
 		Timeout     time.Duration
+		Timezone    *time.Location
 		TMUser      struct {
 			BaseURL string
 		}
@@ -85,6 +86,8 @@ func (cfg *Config) application() {
 
 	timeoutInSec, _ := strconv.Atoi(os.Getenv("APP_TIMEOUT"))
 	cfg.Application.Timeout = time.Duration(timeoutInSec) * time.Second
+
+	cfg.Application.Timezone, _ = time.LoadLocation(os.Getenv("APP_TIMEZONE"))
 
 	cfg.Application.TMUser.BaseURL = os.Getenv("APP_TMUSER_BASE_URL")
 }
