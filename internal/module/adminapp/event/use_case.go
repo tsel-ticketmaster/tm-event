@@ -3,7 +3,6 @@ package event
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -90,11 +89,6 @@ func (u *eventUseCase) createShows(ctx context.Context, e Event, tx *sql.Tx) err
 		}
 
 		for _, ts := range s.TicketStock {
-			var of string
-			if ts.OnlineFor != nil {
-				of = *ts.OnlineFor
-			}
-			fmt.Println("id->", ts.ID, "|  online for->", of, "|  showid ->", ts.ShowID)
 			if err := u.ticketStockRepository.Save(ctx, ts, tx); err != nil {
 				return err
 			}
@@ -165,5 +159,8 @@ func (u *eventUseCase) CreateEvent(ctx context.Context, req CreateEventRequest) 
 		return nil, err
 	}
 
-	return e, nil
+	resp := CreateEventResponse{}
+	resp.PopulateFromEntity(e)
+
+	return resp, nil
 }

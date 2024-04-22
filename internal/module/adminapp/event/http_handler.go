@@ -28,7 +28,7 @@ func InitHTTPHandler(router *mux.Router, adminSession *middleware.AdminSession, 
 		EventUseCase: eventUsecase,
 	}
 
-	router.HandleFunc("/tm-event/v1/adminapp/events", publicMiddleware.SetRouteChain(handler.CreateEvent)).Methods(http.MethodPost)
+	router.HandleFunc("/tm-event/v1/adminapp/events", publicMiddleware.SetRouteChain(handler.CreateEvent, adminSession.Verify)).Methods(http.MethodPost)
 }
 
 func (handler HTTPHandler) validate(ctx context.Context, payload interface{}) error {
