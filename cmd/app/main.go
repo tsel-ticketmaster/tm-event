@@ -14,6 +14,8 @@ import (
 	adminapp_event "github.com/tsel-ticketmaster/tm-event/internal/module/adminapp/event"
 	adminapp_order "github.com/tsel-ticketmaster/tm-event/internal/module/adminapp/order"
 	adminapp_ticket "github.com/tsel-ticketmaster/tm-event/internal/module/adminapp/ticket"
+	customerapp_event "github.com/tsel-ticketmaster/tm-event/internal/module/customerapp/event"
+	customerapp_ticket "github.com/tsel-ticketmaster/tm-event/internal/module/customerapp/ticket"
 	"github.com/tsel-ticketmaster/tm-event/internal/pkg/jwt"
 	internalMiddleare "github.com/tsel-ticketmaster/tm-event/internal/pkg/middleware"
 	"github.com/tsel-ticketmaster/tm-event/internal/pkg/session"
@@ -107,6 +109,36 @@ func main() {
 	adminapp_event.InitHTTPHandler(router, adminSessionMiddleware, validate, adminappEventUseCase)
 
 	// customer's app
+	customerappEventRepo := customerapp_event.NewEventRepository(logger, psqldb)
+	customerappShowRepo := customerapp_event.NewShowRepository(logger, psqldb)
+	customerappLocationRepo := customerapp_event.NewLocationRepository(logger, psqldb)
+	customerappArtistRepo := customerapp_event.NewArtistRepository(logger, psqldb)
+	customerappPromotorRepo := customerapp_event.NewPromotorRepository(logger, psqldb)
+	customerappTicketStockRepo := customerapp_ticket.NewTicketStockRepository(logger, psqldb)
+	customerappAcquiredTicketRepo := customerapp_ticket.NewAcquiredTicketRepository(logger, psqldb)
+	customerappEventUseCase := customerapp_event.NewEventUseCase(customerapp_event.EventUseCaseProperty{
+		Logger:                   logger,
+		Location:                 c.Application.Timezone,
+		Timeout:                  c.Application.Timeout,
+		EventRepository:          customerappEventRepo,
+		ArtistRepository:         customerappArtistRepo,
+		PromotorRepository:       customerappPromotorRepo,
+		ShowRepository:           customerappShowRepo,
+		LocationRepository:       customerappLocationRepo,
+		TicketStockRepository:    customerappTicketStockRepo,
+		AcquiredTicketRepository: customerappAcquiredTicketRepo,
+		Publisher:                publisher,
+	})
+
+	orderPaidSubscriber := pubsub.SubscriberFromConfluentKafkaConsumer(pubsub.ConfluentKafkaConsumerProperty{
+		Logger: logger,
+		Topic:  "order-paid",
+		EventHandler: &customerapp_event.OrderPaidEventHandler{
+			EventUseCase: customerappEventUseCase,
+		},
+		Consumer: kafka.NewConsumer(CustomerApp, true),
+	})
+	orderPaidSubscriber.Subscribe()
 
 	handler := middleware.SetChain(
 		router,
@@ -137,6 +169,7 @@ func main() {
 	<-sigterm
 
 	srv.Shutdown(ctx)
+	orderPaidSubscriber.Close()
 	publisher.Close()
 	psqldb.Close()
 	rc.Close()
