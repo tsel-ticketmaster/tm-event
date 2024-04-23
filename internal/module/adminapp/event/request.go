@@ -156,7 +156,7 @@ func (r CreateEventRequest) ToEntityEvent(location *time.Location, now time.Time
 				ShowID:          onlineShow.ID,
 				ID:              util.GenerateTimestampWithPrefix("TSTK"),
 				OnlineFor:       &liveShow.ID,
-				Tier:            TicketTierBronze,
+				Tier:            TicketTierOnline,
 				Allocation:      allocation,
 				Price:           r.OnlineTicketPrice,
 				Acquired:        0,
