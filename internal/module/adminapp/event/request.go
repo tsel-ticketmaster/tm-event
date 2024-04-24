@@ -45,7 +45,7 @@ type CreateEventRequest struct {
 	TotalOnlineTicketAllocation int64               `json:"total_online_ticket_allocation" validate:"required"`
 	Shows                       []CreateShowRequest `json:"shows" validate:"required,dive,required"`
 	ShowTime                    string              `json:"show_time" validate:"datetime=2006-01-02 15:04:05"`
-	OrderRuleDay                []int64             `json:"order_rule_day" validate:"omitempty,dive,min=1,max=7"`
+	OrderRuleDay                []int64             `json:"order_rule_day" validate:"omitempty,dive,min=0,max=6"`
 	OrderRuleRangeDate          struct {
 		StartDate string `json:"start_date" validate:"datetime=2006-01-02 15:04:05"`
 		EndDate   string `json:"end_date" validate:"datetime=2006-01-02 15:04:05"`
