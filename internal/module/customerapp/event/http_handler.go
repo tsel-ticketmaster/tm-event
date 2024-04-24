@@ -30,6 +30,7 @@ func InitHTTPHandler(router *mux.Router, customerSession *middleware.CustomerSes
 
 	router.HandleFunc("/tm-event/v1/customerapp/events", publicMiddleware.SetRouteChain(handler.GetManyEvent, customerSession.Verify)).Methods(http.MethodGet)
 	router.HandleFunc("/tm-event/v1/customerapp/events/{eventID}/shows", publicMiddleware.SetRouteChain(handler.GetManyShow, customerSession.Verify)).Methods(http.MethodGet)
+	router.HandleFunc("/tm-event/v1/customerapp/events/{eventID}/shows/{showID}/tickets", publicMiddleware.SetRouteChain(handler.GetManyShowTickets, customerSession.Verify)).Methods(http.MethodGet)
 }
 
 func (handler HTTPHandler) validate(ctx context.Context, payload interface{}) error {
@@ -111,6 +112,33 @@ func (handler HTTPHandler) GetManyShow(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, response.RESTEnvelope{
 		Status:  status.OK,
 		Message: "list of show",
+		Data:    resp,
+		Meta:    nil,
+	})
+}
+
+func (handler HTTPHandler) GetManyShowTickets(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+
+	req := GetManyShowTicketsRequest{
+		EventID: vars["eventID"],
+		ShowID:  vars["showID"],
+	}
+
+	resp, err := handler.EventUseCase.GetManyShowTickets(ctx, req)
+	if err != nil {
+		ae := errors.Destruct(err)
+		response.JSON(w, ae.HTTPStatusCode, response.RESTEnvelope{
+			Status:  ae.Status,
+			Message: ae.Message,
+		})
+
+		return
+	}
+	response.JSON(w, http.StatusOK, response.RESTEnvelope{
+		Status:  status.OK,
+		Message: "list of show tickets",
 		Data:    resp,
 		Meta:    nil,
 	})

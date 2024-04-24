@@ -8,3 +8,8 @@ type GetManyEventRequest struct {
 type GetManyShowRequest struct {
 	EventID string
 }
+
+type GetManyShowTicketsRequest struct {
+	EventID string
+	ShowID  string
+}

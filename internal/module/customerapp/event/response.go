@@ -88,3 +88,13 @@ type GetManyEventResponse struct {
 type GetManyShowResponse struct {
 	Shows []ShowResponse `json:"shows"`
 }
+
+type ShowTicketResponse struct {
+	Tier  string  `json:"tier"`
+	Stock int64   `json:"stock"`
+	Price float64 `json:"price"`
+}
+
+type GetManyShowTicketsResponse struct {
+	ShowTickets []ShowTicketResponse `json:"show_tickets"`
+}

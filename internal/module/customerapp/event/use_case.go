@@ -19,6 +19,7 @@ type EventUseCase interface {
 	OnOrderPaid(ctx context.Context, e OrderPaidEvent) error
 	GetManyEvent(ctx context.Context, req GetManyEventRequest) (GetManyEventResponse, error)
 	GetManyShow(ctx context.Context, req GetManyShowRequest) (GetManyShowResponse, error)
+	GetManyShowTickets(ctx context.Context, req GetManyShowTicketsRequest) (GetManyShowTicketsResponse, error)
 }
 
 type eventUseCase struct {
@@ -162,6 +163,38 @@ func (u *eventUseCase) GetManyShow(ctx context.Context, req GetManyShowRequest) 
 		}
 
 		resp.Shows[k] = sr
+	}
+
+	return resp, nil
+}
+
+// GetManyShowTickets implements EventUseCase.
+func (u *eventUseCase) GetManyShowTickets(ctx context.Context, req GetManyShowTicketsRequest) (GetManyShowTicketsResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, u.timeout)
+	defer cancel()
+
+	ticketStocks, err := u.ticketStockRepository.FindManyByShowID(ctx, req.ShowID, nil)
+	if err != nil {
+		return GetManyShowTicketsResponse{}, err
+	}
+
+	resp := GetManyShowTicketsResponse{
+		ShowTickets: make([]ShowTicketResponse, len(ticketStocks)),
+	}
+
+	for k, ts := range ticketStocks {
+		if ts.EventID != req.EventID {
+			return GetManyShowTicketsResponse{}, err
+		}
+
+		stock := ts.Allocation - ts.Acquired
+		st := ShowTicketResponse{
+			Tier:  ts.Tier,
+			Stock: stock,
+			Price: ts.Price,
+		}
+
+		resp.ShowTickets[k] = st
 	}
 
 	return resp, nil
