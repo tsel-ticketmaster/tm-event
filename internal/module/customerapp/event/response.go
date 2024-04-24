@@ -98,3 +98,29 @@ type ShowTicketResponse struct {
 type GetManyShowTicketsResponse struct {
 	ShowTickets []ShowTicketResponse `json:"show_tickets"`
 }
+
+type AcquiredTicketResponse struct {
+	ID                   int64     `json:"id"`
+	Number               string    `json:"number"`
+	EventID              string    `json:"event_id"`
+	ShowID               string    `json:"show_id"`
+	Tier                 string    `json:"tier"`
+	TicketStockID        string    `json:"ticket_stock_id"`
+	EventName            string    `json:"event_name"`
+	ShowVenue            string    `json:"show_venue"`
+	ShowType             string    `json:"show_type"`
+	ShowCountry          string    `json:"show_country"`
+	ShowCity             string    `json:"show_city"`
+	ShowFormattedAddress string    `json:"show_formatted_address"`
+	ShowTime             time.Time `json:"show_time"`
+	CustomerName         string    `json:"customer_name"`
+	CustomerEmail        string    `json:"customer_email"`
+	CustomerID           int64     `json:"customer_id"`
+	CreatedAt            time.Time `json:"created_at"`
+	OrderID              string    `json:"order_id"`
+}
+
+type GetManyAcquiredTicketResponse struct {
+	Total           int64                    `json:"total"`
+	AcquiredTickets []AcquiredTicketResponse `json:"acquired_tickets"`
+}

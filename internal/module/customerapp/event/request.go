@@ -13,3 +13,8 @@ type GetManyShowTicketsRequest struct {
 	EventID string
 	ShowID  string
 }
+
+type GetManyAcquiredTicketRequest struct {
+	Page int
+	Size int
+}

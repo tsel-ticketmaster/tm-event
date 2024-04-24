@@ -31,6 +31,7 @@ func InitHTTPHandler(router *mux.Router, customerSession *middleware.CustomerSes
 	router.HandleFunc("/tm-event/v1/customerapp/events", publicMiddleware.SetRouteChain(handler.GetManyEvent, customerSession.Verify)).Methods(http.MethodGet)
 	router.HandleFunc("/tm-event/v1/customerapp/events/{eventID}/shows", publicMiddleware.SetRouteChain(handler.GetManyShow, customerSession.Verify)).Methods(http.MethodGet)
 	router.HandleFunc("/tm-event/v1/customerapp/events/{eventID}/shows/{showID}/tickets", publicMiddleware.SetRouteChain(handler.GetManyShowTickets, customerSession.Verify)).Methods(http.MethodGet)
+	router.HandleFunc("/tm-event/v1/customerapp/events/acquired-tickets", publicMiddleware.SetRouteChain(handler.GetManyAcquiredTickets, customerSession.Verify)).Methods(http.MethodGet)
 }
 
 func (handler HTTPHandler) validate(ctx context.Context, payload interface{}) error {
@@ -139,6 +140,34 @@ func (handler HTTPHandler) GetManyShowTickets(w http.ResponseWriter, r *http.Req
 	response.JSON(w, http.StatusOK, response.RESTEnvelope{
 		Status:  status.OK,
 		Message: "list of show tickets",
+		Data:    resp,
+		Meta:    nil,
+	})
+}
+
+func (handler HTTPHandler) GetManyAcquiredTickets(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	req := GetManyAcquiredTicketRequest{}
+
+	qs := r.URL.Query()
+
+	req.Page, _ = strconv.Atoi(qs.Get("page"))
+	req.Size, _ = strconv.Atoi(qs.Get("size"))
+
+	resp, err := handler.EventUseCase.GetManyAcquiredTickets(ctx, req)
+	if err != nil {
+		ae := errors.Destruct(err)
+		response.JSON(w, ae.HTTPStatusCode, response.RESTEnvelope{
+			Status:  ae.Status,
+			Message: ae.Message,
+		})
+
+		return
+	}
+	response.JSON(w, http.StatusOK, response.RESTEnvelope{
+		Status:  status.OK,
+		Message: "list of acquired tickets",
 		Data:    resp,
 		Meta:    nil,
 	})

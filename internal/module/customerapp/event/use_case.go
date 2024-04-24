@@ -8,6 +8,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/tsel-ticketmaster/tm-event/internal/module/customerapp/ticket"
+	"github.com/tsel-ticketmaster/tm-event/internal/pkg/session"
 	"github.com/tsel-ticketmaster/tm-event/internal/pkg/util"
 	"github.com/tsel-ticketmaster/tm-event/pkg/errors"
 	"github.com/tsel-ticketmaster/tm-event/pkg/pubsub"
@@ -20,6 +21,7 @@ type EventUseCase interface {
 	GetManyEvent(ctx context.Context, req GetManyEventRequest) (GetManyEventResponse, error)
 	GetManyShow(ctx context.Context, req GetManyShowRequest) (GetManyShowResponse, error)
 	GetManyShowTickets(ctx context.Context, req GetManyShowTicketsRequest) (GetManyShowTicketsResponse, error)
+	GetManyAcquiredTickets(ctx context.Context, req GetManyAcquiredTicketRequest) (GetManyAcquiredTicketResponse, error)
 }
 
 type eventUseCase struct {
@@ -64,6 +66,57 @@ func NewEventUseCase(props EventUseCaseProperty) EventUseCase {
 		acquiredTicketRepository: props.AcquiredTicketRepository,
 		publisher:                props.Publisher,
 	}
+}
+
+// GetManyAcquiredTickets implements EventUseCase.
+func (u *eventUseCase) GetManyAcquiredTickets(ctx context.Context, req GetManyAcquiredTicketRequest) (GetManyAcquiredTicketResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, u.timeout)
+	defer cancel()
+
+	acc, err := session.GetAccountFromCtx(ctx)
+	if err != nil {
+		return GetManyAcquiredTicketResponse{}, err
+	}
+
+	offset := (req.Page - 1) * req.Size
+	limit := req.Size
+
+	var bunchOfAcquiredTickets []ticket.AcquiredTicket
+	var total int64
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		acqs, err := u.acquiredTicketRepository.FindManyByCustomerID(gctx, acc.ID, offset, limit, nil)
+		if err != nil {
+			return err
+		}
+
+		bunchOfAcquiredTickets = acqs
+		return nil
+	})
+	g.Go(func() error {
+		count, err := u.acquiredTicketRepository.CountByCustomerID(gctx, acc.ID, nil)
+		if err != nil {
+			return err
+		}
+
+		total = count
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		return GetManyAcquiredTicketResponse{}, err
+	}
+
+	resp := GetManyAcquiredTicketResponse{
+		Total:           total,
+		AcquiredTickets: make([]AcquiredTicketResponse, len(bunchOfAcquiredTickets)),
+	}
+
+	for k, v := range bunchOfAcquiredTickets {
+		resp.AcquiredTickets[k] = AcquiredTicketResponse(v)
+	}
+
+	return resp, nil
 }
 
 // GetManyEvent implements EventUseCase.

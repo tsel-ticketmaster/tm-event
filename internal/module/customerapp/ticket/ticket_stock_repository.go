@@ -119,6 +119,7 @@ func (r *ticketStockRepository) FindManyByShowID(ctx context.Context, showID str
 		FROM ticket_stock
 		WHERE
 			show_id = $1
+		ORDER BY price ASC
 	`
 
 	stmt, err := cmd.PrepareContext(ctx, query)
