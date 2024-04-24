@@ -84,3 +84,7 @@ type GetManyEventResponse struct {
 	Total  int64           `json:"total"`
 	Events []EventResponse `json:"events"`
 }
+
+type GetManyShowResponse struct {
+	Shows []ShowResponse `json:"shows"`
+}

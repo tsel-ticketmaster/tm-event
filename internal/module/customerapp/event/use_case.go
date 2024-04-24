@@ -18,6 +18,7 @@ import (
 type EventUseCase interface {
 	OnOrderPaid(ctx context.Context, e OrderPaidEvent) error
 	GetManyEvent(ctx context.Context, req GetManyEventRequest) (GetManyEventResponse, error)
+	GetManyShow(ctx context.Context, req GetManyShowRequest) (GetManyShowResponse, error)
 }
 
 type eventUseCase struct {
@@ -119,6 +120,48 @@ func (u *eventUseCase) GetManyEvent(ctx context.Context, req GetManyEventRequest
 		e := EventResponse{}
 		e.PopulateFromEntity(v)
 		resp.Events[k] = e
+	}
+
+	return resp, nil
+}
+
+// GetManyShow implements EventUseCase.
+func (u *eventUseCase) GetManyShow(ctx context.Context, req GetManyShowRequest) (GetManyShowResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, u.timeout)
+	defer cancel()
+
+	bunchOfShows, err := u.showRepository.FindManyByEventID(ctx, req.EventID, nil)
+	if err != nil {
+		return GetManyShowResponse{}, err
+	}
+
+	resp := GetManyShowResponse{
+		Shows: make([]ShowResponse, len(bunchOfShows)),
+	}
+
+	for k, v := range bunchOfShows {
+		location, err := u.locationRepository.FindByShowID(ctx, v.ID, nil)
+		if err != nil {
+			return GetManyShowResponse{}, err
+		}
+
+		lr := &LocationResponse{
+			Country:          location.Country,
+			City:             location.City,
+			FormattedAddress: location.FormattedAddress,
+			Latitude:         location.Latitude,
+			Longitude:        location.Longitude,
+		}
+		sr := ShowResponse{
+			ID:       v.ID,
+			Venue:    v.Venue,
+			Type:     v.Type,
+			Location: lr,
+			Time:     v.Time,
+			Status:   v.Status,
+		}
+
+		resp.Shows[k] = sr
 	}
 
 	return resp, nil
