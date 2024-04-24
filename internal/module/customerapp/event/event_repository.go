@@ -3,8 +3,8 @@ package event
 import (
 	"context"
 	"database/sql"
-
 	"fmt"
+
 	"net/http"
 
 	"github.com/sirupsen/logrus"
@@ -17,9 +17,9 @@ type EventRepository interface {
 	CommitTx(ctx context.Context, tx *sql.Tx) error
 	Rollback(ctx context.Context, tx *sql.Tx) error
 
-	Save(ctx context.Context, e Event, tx *sql.Tx) error
 	FindByID(ctx context.Context, ID string, tx *sql.Tx) (Event, error)
-	Update(ctx context.Context, ID string, update Event, tx *sql.DB) error
+	FindMany(ctx context.Context, offset, limit int, tx *sql.Tx) ([]Event, error)
+	Count(ctx context.Context, tx *sql.Tx) (int64, error)
 }
 
 type sqlCommand interface {
@@ -72,6 +72,81 @@ func (r *eventRepository) Rollback(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
+// Count implements EventRepository.
+func (r *eventRepository) Count(ctx context.Context, tx *sql.Tx) (int64, error) {
+	var cmd sqlCommand = r.db
+
+	if tx != nil {
+		cmd = tx
+	}
+
+	query := `SELECT count(id) FROM event`
+	stmt, err := cmd.PrepareContext(ctx, query)
+	if err != nil {
+		r.logger.WithContext(ctx).WithError(err).Error()
+		return 0, errors.New(http.StatusInternalServerError, status.INTERNAL_SERVER_ERROR, "an error occurred while counting bunch of event's prorperties")
+	}
+	defer stmt.Close()
+
+	var count int64
+	row := stmt.QueryRowContext(ctx)
+	if err := row.Scan(&count); err != nil {
+		r.logger.WithContext(ctx).WithError(err).Error()
+		return 0, errors.New(http.StatusInternalServerError, status.INTERNAL_SERVER_ERROR, "an error occurred while counting bunch of event's prorperties")
+	}
+
+	return count, nil
+}
+
+// FindMany implements EventRepository.
+func (r *eventRepository) FindMany(ctx context.Context, offset int, limit int, tx *sql.Tx) ([]Event, error) {
+	var cmd sqlCommand = r.db
+
+	if tx != nil {
+		cmd = tx
+	}
+
+	query := `
+		SELECT 
+			id, name, description, status, created_at, updated_at
+		FROM event
+		ORDER BY id DESC
+		OFFSET $1
+		LIMIT $2
+	`
+
+	stmt, err := cmd.PrepareContext(ctx, query)
+	if err != nil {
+		r.logger.WithContext(ctx).WithError(err).Error()
+		return nil, errors.New(http.StatusInternalServerError, status.INTERNAL_SERVER_ERROR, "an error occurred while getting bunch of event's prorperties")
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.QueryContext(ctx, offset, limit)
+	if err != nil {
+		r.logger.WithContext(ctx).WithError(err).Error()
+		return nil, errors.New(http.StatusInternalServerError, status.INTERNAL_SERVER_ERROR, "an error occurred while getting bunch of event's prorperties")
+	}
+
+	defer rows.Close()
+
+	var bunchOfEvents = make([]Event, 0)
+	for rows.Next() {
+		var data Event
+		err := rows.Scan(
+			&data.ID, &data.Name, &data.Description, &data.Status, &data.CreatedAt, &data.UpdatedAt,
+		)
+		if err != nil {
+			r.logger.WithContext(ctx).WithError(err).Error()
+			return nil, errors.New(http.StatusInternalServerError, status.INTERNAL_SERVER_ERROR, "an error occurred while getting bunch of event's prorperties")
+		}
+
+		bunchOfEvents = append(bunchOfEvents, data)
+	}
+
+	return bunchOfEvents, nil
+}
+
 // FindByID implements EventRepository.
 func (r *eventRepository) FindByID(ctx context.Context, ID string, tx *sql.Tx) (Event, error) {
 	var cmd sqlCommand = r.db
@@ -111,73 +186,4 @@ func (r *eventRepository) FindByID(ctx context.Context, ID string, tx *sql.Tx) (
 	}
 
 	return data, nil
-}
-
-// Save implements EventRepository.
-func (r *eventRepository) Save(ctx context.Context, e Event, tx *sql.Tx) error {
-	var cmd sqlCommand = r.db
-
-	if tx != nil {
-		cmd = tx
-	}
-
-	query := `
-		INSERT INTO event 
-		(
-			id, name, description, status, created_at, updated_at
-		)
-		VALUES
-		(
-			$1, $2, $3, $4, $5, $6
-		)
-	`
-
-	stmt, err := cmd.PrepareContext(ctx, query)
-	if err != nil {
-		r.logger.WithContext(ctx).WithError(err).Error()
-		return errors.New(http.StatusInternalServerError, status.INTERNAL_SERVER_ERROR, "an error occurred while saving event's prorperties")
-	}
-	defer stmt.Close()
-
-	_, err = stmt.ExecContext(ctx, e.ID, e.Name, e.Description, e.Status, e.CreatedAt, e.UpdatedAt)
-	if err != nil {
-		r.logger.WithContext(ctx).WithError(err).Error()
-		return errors.New(http.StatusInternalServerError, status.INTERNAL_SERVER_ERROR, "an error occurred while saving event's prorperties")
-	}
-
-	return nil
-}
-
-// Update implements EventRepository.
-func (r *eventRepository) Update(ctx context.Context, ID string, e Event, tx *sql.DB) error {
-	var cmd sqlCommand = r.db
-
-	if tx != nil {
-		cmd = tx
-	}
-
-	query := `
-		UPDATE event
-		SET
-			name = $1,
-			description = $2,
-			status = $3,
-			updated_at = $4
-		WHERE id = $5
-	`
-
-	stmt, err := cmd.PrepareContext(ctx, query)
-	if err != nil {
-		r.logger.WithContext(ctx).WithError(err).Error()
-		return errors.New(http.StatusInternalServerError, status.INTERNAL_SERVER_ERROR, "an error occurred while updating event's prorperties")
-	}
-	defer stmt.Close()
-
-	_, err = stmt.ExecContext(ctx, e.Name, e.Description, e.Status, e.CreatedAt, e.UpdatedAt)
-	if err != nil {
-		r.logger.WithContext(ctx).WithError(err).Error()
-		return errors.New(http.StatusInternalServerError, status.INTERNAL_SERVER_ERROR, "an error occurred while updating event's prorperties")
-	}
-
-	return nil
 }

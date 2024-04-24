@@ -25,19 +25,19 @@ type ShowResponse struct {
 	Status   string            `json:"status"`
 }
 
-type CreateEventResponse struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Status      string `json:"status"`
-	Promotors   []PromotorResponse
-	Artists     []string `json:"artists"`
-	Shows       []ShowResponse
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+type EventResponse struct {
+	ID          string             `json:"id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	Status      string             `json:"status"`
+	Promotors   []PromotorResponse `json:"promotors"`
+	Artists     []string           `json:"artists"`
+	Shows       []ShowResponse     `json:"shows,omitempty"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
 }
 
-func (r *CreateEventResponse) PopulateFromEntity(e Event) {
+func (r *EventResponse) PopulateFromEntity(e Event) {
 	r.ID = e.ID
 	r.Name = e.Name
 	r.Description = e.Description
@@ -78,4 +78,9 @@ func (r *CreateEventResponse) PopulateFromEntity(e Event) {
 
 	r.CreatedAt = e.CreatedAt
 	r.UpdatedAt = e.UpdatedAt
+}
+
+type GetManyEventResponse struct {
+	Total  int64           `json:"total"`
+	Events []EventResponse `json:"events"`
 }

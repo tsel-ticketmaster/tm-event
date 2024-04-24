@@ -12,10 +12,12 @@ import (
 	"github.com/tsel-ticketmaster/tm-event/pkg/errors"
 	"github.com/tsel-ticketmaster/tm-event/pkg/pubsub"
 	"github.com/tsel-ticketmaster/tm-event/pkg/status"
+	"golang.org/x/sync/errgroup"
 )
 
 type EventUseCase interface {
 	OnOrderPaid(ctx context.Context, e OrderPaidEvent) error
+	GetManyEvent(ctx context.Context, req GetManyEventRequest) (GetManyEventResponse, error)
 }
 
 type eventUseCase struct {
@@ -60,6 +62,66 @@ func NewEventUseCase(props EventUseCaseProperty) EventUseCase {
 		acquiredTicketRepository: props.AcquiredTicketRepository,
 		publisher:                props.Publisher,
 	}
+}
+
+// GetManyEvent implements EventUseCase.
+func (u *eventUseCase) GetManyEvent(ctx context.Context, req GetManyEventRequest) (GetManyEventResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, u.timeout)
+	defer cancel()
+
+	offset := (req.Page - 1) * req.Size
+	limit := req.Size
+
+	var bunchOfEvents []Event
+	var total int64
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		count, err := u.eventRepository.Count(gctx, nil)
+		if err != nil {
+			return err
+		}
+		total = count
+		return nil
+	})
+	g.Go(func() error {
+		events, err := u.eventRepository.FindMany(ctx, offset, limit, nil)
+		if err != nil {
+			return err
+		}
+		bunchOfEvents = events
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return GetManyEventResponse{}, err
+	}
+
+	resp := GetManyEventResponse{
+		Total:  total,
+		Events: make([]EventResponse, len(bunchOfEvents)),
+	}
+
+	for k, v := range bunchOfEvents {
+		bunchOfArtist, err := u.artistRepository.FindManyByEventID(ctx, v.ID, nil)
+		if err != nil {
+			return GetManyEventResponse{}, nil
+		}
+
+		bunchOfPromotors, err := u.promotorRepository.FindManyByEventID(ctx, v.ID, nil)
+		if err != nil {
+			return GetManyEventResponse{}, nil
+		}
+
+		v.Artists = bunchOfArtist
+		v.Promotors = bunchOfPromotors
+
+		e := EventResponse{}
+		e.PopulateFromEntity(v)
+		resp.Events[k] = e
+	}
+
+	return resp, nil
 }
 
 // OnOrderPaid implements EventUseCase.

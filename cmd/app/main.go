@@ -76,6 +76,7 @@ func main() {
 	session := session.NewRedisSessionStore(logger, rc)
 
 	adminSessionMiddleware := internalMiddleare.NewAdminSessionMiddleware(jsonWebToken, session)
+	customerSessionMiddleware := internalMiddleare.NewCustomerSessionMiddleware(jsonWebToken, session)
 
 	router := mux.NewRouter()
 	router.Use(
@@ -129,7 +130,7 @@ func main() {
 		AcquiredTicketRepository: customerappAcquiredTicketRepo,
 		Publisher:                publisher,
 	})
-
+	customerapp_event.InitHTTPHandler(router, customerSessionMiddleware, validate, customerappEventUseCase)
 	orderPaidSubscriber := pubsub.SubscriberFromConfluentKafkaConsumer(pubsub.ConfluentKafkaConsumerProperty{
 		Logger: logger,
 		Topic:  "order-paid",
