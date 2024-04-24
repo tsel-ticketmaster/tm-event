@@ -90,6 +90,7 @@ type GetManyShowResponse struct {
 }
 
 type ShowTicketResponse struct {
+	ID    string  `json:"id"`
 	Tier  string  `json:"tier"`
 	Stock int64   `json:"stock"`
 	Price float64 `json:"price"`

@@ -242,6 +242,7 @@ func (u *eventUseCase) GetManyShowTickets(ctx context.Context, req GetManyShowTi
 
 		stock := ts.Allocation - ts.Acquired
 		st := ShowTicketResponse{
+			ID:    ts.ID,
 			Tier:  ts.Tier,
 			Stock: stock,
 			Price: ts.Price,
